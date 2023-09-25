@@ -5,8 +5,7 @@ from selenium.webdriver.chrome.options import Options
 chrome_options = Options()
 driver = webdriver.Chrome(options=chrome_options)
 
-def click_on_nav(url, text):
-    driver.get(url)
+def click_on_nav(text):
     nav_bar = driver.find_element(By.XPATH, '//ul[contains(@class, "navbar-nav")]')
 
     # Go to the team tab
@@ -30,21 +29,42 @@ def get_debate_rounds(team_name):
                 names = teams[0].split(", ")
                 print(names)
             else:
+                score = round.find_elements(By.XPATH, './/div[@class="list-group-item"]')[1].get_attribute("innerText").split(": ")[1]
                 curr_round = []
                 teams = teams[1].split(")")
                 for opp in teams[:-1]:
                     name, pos = opp.split(" (")
                     curr_round.append((name, pos))
-                debate_rounds.append((placement, curr_round))
+                debate_rounds.append((placement, curr_round, score))
             # print(teams)
             
             # print(placement, teams)
     return debate_rounds
 
 
+def get_speaker_score(team_name, round):
+    return int(get_debate_rounds(team_name)[round][2])
+
+
+
 def scrape(url, team_name):
-    click_on_nav(url, "Team Tab")
+    driver.get(url)
+    click_on_nav("Team Tab")
     rounds = get_debate_rounds(team_name)
-    print(rounds)
+    final_rounds = []
+    for round, round_num in zip(rounds, range(len(rounds))):
+        print(round_num, round)
+        room_score = 0
+        for team, pos in round[1]:
+            room_score += get_speaker_score(team, round_num)
+
+
+        tmp_round = {}
+        tmp_round["placement"] = round[0]
+        tmp_round["teams"] = round[1]
+        tmp_round["room_score"] = room_score
+        final_rounds.append(tmp_round)
+    
+    [print(round) for round in final_rounds]
 
     driver.quit()
