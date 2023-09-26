@@ -8,5 +8,5 @@ def run():
     url = "https://yyzopen.calicotab.com/to23/" # input("Enter the URL: ")
     team_name = "EEC 15" # input("Enter the team name: ")
     my_name = "Terrence Zhu" # input("Enter the participant name: ")
-    scrape(url, team_name, my_name)
-    return "Success"
+    data = scrape(url, team_name, my_name)
+    return data

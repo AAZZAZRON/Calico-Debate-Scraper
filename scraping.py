@@ -21,13 +21,17 @@ Gets the opponents the team faces per round
 At the same time, gets the team's placement and score per round
 
 @param {team_name} is the name of the team
-@return {my_stats} is a list of tuples, where each tuple is (placement, position, score)
+@return {my_placements} is a list of the user's placements per round
+@return {my_positions} is a list of the user's positions per round
+@return {team_scores} is a list of the user's team's scores per round
 @return {debate_rounds} is a list of lists, where each list is the teams in the user's room per round
 '''
 def get_opponents(team_name):
     team = driver.find_element(By.XPATH, f'//span[@class="tooltip-trigger" and contains(., "{team_name}")]/ancestor::tr')
     cols = team.find_elements(By.XPATH, './/td')
-    my_stats = []
+    my_placements = []  # placement per round
+    my_positions = []   # position per round
+    team_scores = []    # score per round
     debate_rounds = []
     for col in cols:
         round = col.find_elements(By.XPATH, f'.//div[@role="tooltip" and @class="popover bs-popover-bottom"]')
@@ -38,8 +42,7 @@ def get_opponents(team_name):
             # print(repr(teams))
             teams = teams.split(":")
             if len(teams) == 1:
-                names = teams[0].split(", ")
-                # print(names)
+                continue
             else:
                 score = round.find_elements(By.XPATH, './/div[@class="list-group-item"]')[1].get_attribute("innerText").split(": ")[1]  # TODO: fix this lol
                 my_pos = ""
@@ -50,9 +53,11 @@ def get_opponents(team_name):
                     if name == team_name:
                         my_pos = pos
                     curr_round.append(name)
-                my_stats.append((placement, my_pos, score))
+                my_placements.append(placement)
+                my_positions.append(my_pos)
+                team_scores.append(int(score))
                 debate_rounds.append(curr_round)
-    return my_stats, debate_rounds
+    return my_placements, my_positions, team_scores, debate_rounds
 
 
 '''
@@ -96,7 +101,7 @@ the room average speaker score per round, and the average points awarded per rou
 @return {avg_points} is a list of the average points awarded per round (based on the user's position)
 '''
 def get_tourney_scores_points_stats(teams, positions, num_rounds):
-    print(positions)
+    # print(positions)
     tourney_scores = [0] * num_rounds  # average speaker score per round for the tournament
     position_scores = [0] * num_rounds # average speaker score per round for the position in question
     room_scores = [0] * num_rounds     # average speaker score per round for the room in question
@@ -154,10 +159,32 @@ def get_my_speaker_scores(my_name, num_rounds):
 
 
 '''
+Format the data into a list of dictionaries, where each dictionary is the data for a round
+'''
+def format_data_by_round(data):
+    points = {"1st": 3, "2nd": 2, "3rd": 1, "4th": 0}
+    formatted_data = []
+    for placement, position, team_score, tourney_score, position_score, room_score, avg_point, my_score in zip(data["my_placements"], data["my_positions"], data["team_scores"], data["tourney_scores"], data["position_scores"], data["round_scores"], data["avg_points"], data["my_scores"]):
+        round = {
+            "result": points[placement],
+            "position": position,
+            "partner_speaks": team_score / 2,
+            "round_speaks": tourney_score,
+            "position_speaks": position_score,
+            "room_speaks": room_score,
+            "avg_result": avg_point,
+            "speaks": my_score
+        }
+        formatted_data.append(round)
+    return formatted_data
+
+
+'''
 Main function to scrape the data
 Gets the following:
-- user's team's speaker scores per round
-- user's position and placement per round
+- user's placements per round
+- user's positions per round
+- user's team's scores per round
 
 - tournament average speaker score per round
 - position average speaker score per round (based on the user)
@@ -169,8 +196,8 @@ Gets the following:
 def scrape(url, team_name, my_name):
     driver.get(url)
     click_on_nav("Team Tab")
-    my_stats, rounds = get_opponents(team_name)
-    print(my_stats)
+    my_placements, my_positions, team_scores, rounds = get_opponents(team_name)
+
     # [print(round) for round in rounds]
     faced = {}
     for round, round_num in zip(rounds, range(len(rounds))):
@@ -181,15 +208,28 @@ def scrape(url, team_name, my_name):
                 faced[team] = [round_num]
 
     # print(faced)
-    tourney_scores, position_scores, round_scores, avg_points = get_tourney_scores_points_stats(faced, [x[1] for x in my_stats], len(rounds))
-    print(tourney_scores)
-    print(position_scores)
-    print(round_scores)
-    print(avg_points)
+    tourney_scores, position_scores, round_scores, avg_points = get_tourney_scores_points_stats(faced, my_positions, len(rounds))
+    # print(tourney_scores)
+    # print(position_scores)
+    # print(round_scores)
+    # print(avg_points)
 
     # Get participant speaker scores
     click_on_nav("Speaker Tab")
     my_scores = get_my_speaker_scores(my_name, len(rounds))
-    print(my_scores)
+    # print(my_scores)
+
+    data = {
+        "my_placements": my_placements,
+        "my_positions": my_positions,
+        "team_scores": team_scores,
+        "tourney_scores": tourney_scores,
+        "position_scores": position_scores,
+        "round_scores": round_scores,
+        "avg_points": avg_points,
+        "my_scores": my_scores
+    }
 
     driver.quit()
+
+    return format_data_by_round(data)
