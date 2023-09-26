@@ -53,13 +53,21 @@ def get_teams_position(team_name, col):
             return pos
 
 
-def get_speaker_scores(teams, positions, num_rounds):
+def get_teams_placement_points(col):
+    points = {"1st": 3, "2nd": 2, "3rd": 1, "4th": 0}
+    popup = col.find_element(By.XPATH, './/div[@role="tooltip" and @class="popover bs-popover-bottom"]')
+    placement = popup.find_element(By.XPATH, './/h6[@class="flex-grow-1"]').get_attribute("innerText").replace("Placed ", "")
+    return points[placement]
+
+
+def get_tourney_scores_points_stats(teams, positions, num_rounds):
     print(positions)
-    tourney_scores = [0] * num_rounds
-    position_scores = [0] * num_rounds
-    room_scores = [0] * num_rounds
-    tot_debaters = [0] * num_rounds
-    tot_position = [[] for _ in range(num_rounds)]
+    tourney_scores = [0] * num_rounds  # average speaker score per round for the tournament
+    position_scores = [0] * num_rounds # average speaker score per round for the position in question
+    room_scores = [0] * num_rounds     # average speaker score per round for the room in question
+    avg_points = [0] * num_rounds      # average points per round of the position in question for the tournament
+
+    tot_debate_teams = [0] * num_rounds
     table = driver.find_element(By.XPATH, '//table[@class="table"]').find_element(By.XPATH, './/tbody').find_elements(By.XPATH, './/tr')
     for row in table:  # children of the table
         cols = row.find_elements(By.XPATH, './/td')
@@ -73,28 +81,40 @@ def get_speaker_scores(teams, positions, num_rounds):
             if name in teams and round in teams[name]:
                 room_scores[round] += score
             tourney_scores[round] += score
-            if name == "EEC CT":
-                print(round, score)
+
             if get_teams_position(name, cols[3 + round]) == positions[round]:
                 # print(round, positions[round], name)
                 position_scores[round] += score
-                tot_position[round].append(name)
-            tot_debaters[round] += 1
+                avg_points[round] += get_teams_placement_points(cols[3 + round])
+            tot_debate_teams[round] += 1
 
     for i in range(num_rounds):
-        tourney_scores[i] /= tot_debaters[i] * 2
-        position_scores[i] /= tot_debaters[i] / 2
+        tourney_scores[i] /= tot_debate_teams[i] * 2
+        position_scores[i] /= (tot_debate_teams[i] / 4) * 2
         room_scores[i] /= 8
-    [print(x) for x in tot_position]
-    return tourney_scores, position_scores, room_scores
+        avg_points[i] /= tot_debate_teams[i] / 4
+
+    return tourney_scores, position_scores, room_scores, avg_points
 
 
-def scrape(url, team_name):
+def get_my_speaker_scores(my_name, num_rounds):
+    my_row = driver.find_element(By.XPATH, f'//span[@class="tooltip-trigger" and contains(., "{my_name}")]/ancestor::tr')
+    cols = my_row.find_elements(By.XPATH, './/td')
+    my_scores = [-1] * num_rounds
+    for round in range(num_rounds):
+        score = cols[4 + round].find_elements(By.XPATH, './/span[@class="tooltip-trigger"]')
+        if not score:
+            continue
+        my_scores[round] = int(score[0].get_attribute("innerText"))
+    return my_scores
+
+
+def scrape(url, team_name, my_name):
     driver.get(url)
     click_on_nav("Team Tab")
     my_stats, rounds = get_opponents(team_name)
     print(my_stats)
-    [print(round) for round in rounds]
+    # [print(round) for round in rounds]
     faced = {}
     for round, round_num in zip(rounds, range(len(rounds))):
         for team in round:
@@ -103,9 +123,16 @@ def scrape(url, team_name):
             else:
                 faced[team] = [round_num]
 
-    print(faced)
-    tourney_scores, position_scores, round_scores = get_speaker_scores(faced, [x[1] for x in my_stats], len(rounds))
-    print(tourney_scores)
-    print(position_scores)
-    print(round_scores)
+    # print(faced)
+    # tourney_scores, position_scores, round_scores, avg_points = get_tourney_scores_points_stats(faced, [x[1] for x in my_stats], len(rounds))
+    # print(tourney_scores)
+    # print(position_scores)
+    # print(round_scores)
+    # print(avg_points)
+
+    # Get participant speaker scores
+    click_on_nav("Speaker Tab")
+    my_scores = get_my_speaker_scores(my_name, len(rounds))
+    print(my_scores)
+
     driver.quit()
