@@ -2,8 +2,14 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
-chrome_options = Options()
-driver = webdriver.Chrome(options=chrome_options)
+
+driver = None
+col_round_start = -1
+
+def init():
+    global driver
+    chrome_options = Options()
+    driver = webdriver.Chrome(options=chrome_options)
 
 '''
 Clicks on the nav bar to go to another tab
@@ -27,13 +33,15 @@ At the same time, gets the team's placement and score per round
 @return {debate_rounds} is a list of lists, where each list is the teams in the user's room per round
 '''
 def get_opponents(team_name):
+    global col_round_start
+    
     team = driver.find_element(By.XPATH, f'//span[@class="tooltip-trigger" and contains(., "{team_name}")]/ancestor::tr')
     cols = team.find_elements(By.XPATH, './/td')
     my_placements = []  # placement per round
     my_positions = []   # position per round
     team_scores = []    # score per round
     debate_rounds = []
-    for col in cols:
+    for col, ind in zip(cols, range(len(cols))):
         round = col.find_elements(By.XPATH, f'.//div[@role="tooltip" and @class="popover bs-popover-bottom"]')
         if round:
             round = round[0]
@@ -44,6 +52,8 @@ def get_opponents(team_name):
             if len(teams) == 1:
                 continue
             else:
+                if col_round_start == -1:
+                    col_round_start = ind
                 score = round.find_elements(By.XPATH, './/div[@class="list-group-item"]')[1].get_attribute("innerText").split(": ")[1]  # TODO: fix this lol
                 my_pos = ""
                 curr_round = []
@@ -114,7 +124,7 @@ def get_tourney_scores_points_stats(teams, positions, num_rounds):
         name = cols[1].find_element(By.XPATH, './/span[@class="tooltip-trigger"]').get_attribute("innerText")
         # print(name)
         for round in range(num_rounds):
-            score = cols[3 + round].find_elements(By.XPATH, './/small')
+            score = cols[col_round_start + round].find_elements(By.XPATH, './/small')
             if not score:  # if no score, skip
                 continue
             score = int(score[0].get_attribute("innerText"))
@@ -122,10 +132,10 @@ def get_tourney_scores_points_stats(teams, positions, num_rounds):
                 room_scores[round] += score
             tourney_scores[round] += score
 
-            if get_teams_position(name, cols[3 + round]) == positions[round]:
+            if get_teams_position(name, cols[col_round_start + round]) == positions[round]:
                 # print(round, positions[round], name)
                 position_scores[round] += score
-                avg_points[round] += get_teams_placement_points(cols[3 + round])
+                avg_points[round] += get_teams_placement_points(cols[col_round_start + round])
             tot_debate_teams[round] += 1
 
     for i in range(num_rounds):
@@ -151,7 +161,7 @@ def get_my_speaker_scores(my_name, num_rounds):
     cols = my_row.find_elements(By.XPATH, './/td')
     my_scores = [-1] * num_rounds
     for round in range(num_rounds):
-        score = cols[4 + round].find_elements(By.XPATH, './/span[@class="tooltip-trigger"]')
+        score = cols[4 + round].find_elements(By.XPATH, './/span[@class="tooltip-trigger"]')  # TODO: fix the 4 + lol
         if not score:
             continue
         my_scores[round] = int(score[0].get_attribute("innerText"))
@@ -205,6 +215,8 @@ Gets the following:
 - user's speaker scores per round
 '''
 def scrape(url, team_name, my_name):
+    init()
+
     driver.get(url)
     click_on_nav("Team Tab")
     print("Getting placements, positions, and scores for team...")

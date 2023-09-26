@@ -6,6 +6,7 @@ if __name__ == "__main__":
     url = input("Enter the URL: ") # "https://yyzopen.calicotab.com/to23/" 
     team_name = input("Enter the team name: ") # "EEC 15"
     my_name = input("Enter the participant name: ") # "Terrence Zhu" 
+
     data = scrape(url, team_name, my_name)
 
     write_to_csv(data)
@@ -13,5 +14,7 @@ if __name__ == "__main__":
     # output to console
     with open("out.csv", "r") as file:
         csv = file.readlines()
+    print()
+    print("Here is the output: ")
     for line in csv:
         print(line, end="")
