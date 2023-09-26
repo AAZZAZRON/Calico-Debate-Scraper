@@ -5,14 +5,25 @@ from selenium.webdriver.chrome.options import Options
 chrome_options = Options()
 driver = webdriver.Chrome(options=chrome_options)
 
-def click_on_nav(text):
+'''
+Clicks on the nav bar to go to another tab
+'''
+def click_on_nav(tab_text):
     nav_bar = driver.find_element(By.XPATH, '//ul[contains(@class, "navbar-nav")]')
 
     # Go to the team tab
-    team_tab = nav_bar.find_element(By.XPATH, f'//a[contains(text(), "{text}")]')
+    team_tab = nav_bar.find_element(By.XPATH, f'//a[contains(text(), "{tab_text}")]')
     team_tab.click()
 
 
+'''
+Gets the opponents the team faces per round
+At the same time, gets the team's placement and score per round
+
+@param {team_name} is the name of the team
+@return {my_stats} is a list of tuples, where each tuple is (placement, position, score)
+@return {debate_rounds} is a list of lists, where each list is the teams in the user's room per round
+'''
 def get_opponents(team_name):
     team = driver.find_element(By.XPATH, f'//span[@class="tooltip-trigger" and contains(., "{team_name}")]/ancestor::tr')
     cols = team.find_elements(By.XPATH, './/td')
@@ -44,6 +55,12 @@ def get_opponents(team_name):
     return my_stats, debate_rounds
 
 
+'''
+Gets a team's position in a debate
+@param {team_name} is the name of the team
+@param {col} is the column of the table that contains the team's position
+@return {pos} is the position of the team in the debate, either "OG", "OO", "CG", or "CO"
+'''
 def get_teams_position(team_name, col):
     popup = col.find_element(By.XPATH, './/div[@role="tooltip" and @class="popover bs-popover-bottom"]')
     teams = popup.find_elements(By.XPATH, './/div[@class="list-group-item"]')[0].get_attribute("innerText").split("Teams in debate:")[1].split(")")[:-1]
@@ -53,6 +70,11 @@ def get_teams_position(team_name, col):
             return pos
 
 
+'''
+Gets the points awarded to a team based on their placement
+@param {col} is the column of the table that contains the team's position
+@return {points[placement]} is the number of points awarded to the team
+'''
 def get_teams_placement_points(col):
     points = {"1st": 3, "2nd": 2, "3rd": 1, "4th": 0}
     popup = col.find_element(By.XPATH, './/div[@role="tooltip" and @class="popover bs-popover-bottom"]')
@@ -60,6 +82,19 @@ def get_teams_placement_points(col):
     return points[placement]
 
 
+'''
+Gets the tournament average speaker score per round, the position average speaker score per round,
+the room average speaker score per round, and the average points awarded per round
+
+@param {teams} is a dictionary of teams and the rounds they were in
+@param {positions} is a list of the user's positions per round
+@param {num_rounds} is the number of rounds in the tournament
+
+@return {tourney_scores} is a list of the tournament average speaker score per round
+@return {position_scores} is a list of the position average speaker score per round (based on the user)
+@return {room_scores} is a list of the room average speaker score per round (based on the user)
+@return {avg_points} is a list of the average points awarded per round (based on the user's position)
+'''
 def get_tourney_scores_points_stats(teams, positions, num_rounds):
     print(positions)
     tourney_scores = [0] * num_rounds  # average speaker score per round for the tournament
@@ -97,6 +132,15 @@ def get_tourney_scores_points_stats(teams, positions, num_rounds):
     return tourney_scores, position_scores, room_scores, avg_points
 
 
+'''
+Gets the user's speaker scores per round
+
+> Assert that the current page we are scraping is the Speaker Tab
+
+@param {my_name} is the name of the user
+@param {num_rounds} is the number of rounds in the tournament
+@return {my_scores} is a list of the user's speaker scores per round
+'''
 def get_my_speaker_scores(my_name, num_rounds):
     my_row = driver.find_element(By.XPATH, f'//span[@class="tooltip-trigger" and contains(., "{my_name}")]/ancestor::tr')
     cols = my_row.find_elements(By.XPATH, './/td')
@@ -109,6 +153,19 @@ def get_my_speaker_scores(my_name, num_rounds):
     return my_scores
 
 
+'''
+Main function to scrape the data
+Gets the following:
+- user's team's speaker scores per round
+- user's position and placement per round
+
+- tournament average speaker score per round
+- position average speaker score per round (based on the user)
+- room average speaker score per round (based on the user)
+- average points awarded per round (based on the user's position)
+
+- user's speaker scores per round
+'''
 def scrape(url, team_name, my_name):
     driver.get(url)
     click_on_nav("Team Tab")
@@ -124,11 +181,11 @@ def scrape(url, team_name, my_name):
                 faced[team] = [round_num]
 
     # print(faced)
-    # tourney_scores, position_scores, round_scores, avg_points = get_tourney_scores_points_stats(faced, [x[1] for x in my_stats], len(rounds))
-    # print(tourney_scores)
-    # print(position_scores)
-    # print(round_scores)
-    # print(avg_points)
+    tourney_scores, position_scores, round_scores, avg_points = get_tourney_scores_points_stats(faced, [x[1] for x in my_stats], len(rounds))
+    print(tourney_scores)
+    print(position_scores)
+    print(round_scores)
+    print(avg_points)
 
     # Get participant speaker scores
     click_on_nav("Speaker Tab")
