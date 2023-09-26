@@ -165,17 +165,28 @@ def format_data_by_round(data):
     points = {"1st": 3, "2nd": 2, "3rd": 1, "4th": 0}
     formatted_data = []
     for placement, position, team_score, tourney_score, position_score, room_score, avg_point, my_score in zip(data["my_placements"], data["my_positions"], data["team_scores"], data["tourney_scores"], data["position_scores"], data["round_scores"], data["avg_points"], data["my_scores"]):
-        round = {
+        round_data = {
             "result": points[placement],
-            "position": position,
-            "partner_speaks": team_score / 2,
-            "round_speaks": tourney_score,
-            "position_speaks": position_score,
-            "room_speaks": room_score,
-            "avg_result": avg_point,
+            "team": position,
+            "partner_speaks": team_score - my_score,
+            "round_speaks": round(tourney_score, 3),
+            "position_speaks": round(position_score, 3),
+            "room_speaks": round(room_score, 3),
+            "avg_result": round(avg_point, 3),
             "speaks": my_score
         }
-        formatted_data.append(round)
+        formatted_data.append(round_data)
+    avg_round = {
+        "result": sum([points[placement] for placement in data["my_placements"]]),
+        "avg_result": round(sum(data["avg_points"]), 3),
+        "team": "",
+        "speaks": round(sum(data["my_scores"]) / len(data["my_scores"]), 3),
+        "partner_speaks": round((sum(data["team_scores"]) - sum(data["my_scores"])) / len(data["team_scores"]), 3),
+        "round_speaks": round(sum(data["tourney_scores"]) / len(data["tourney_scores"]), 3),
+        "position_speaks": round(sum(data["position_scores"]) / len(data["position_scores"]), 3),
+        "room_speaks": round(sum(data["round_scores"]) / len(data["round_scores"]), 3)
+    }
+    formatted_data.append(avg_round)
     return formatted_data
 
 
@@ -196,6 +207,7 @@ Gets the following:
 def scrape(url, team_name, my_name):
     driver.get(url)
     click_on_nav("Team Tab")
+    print("Getting placements, positions, and scores for team...")
     my_placements, my_positions, team_scores, rounds = get_opponents(team_name)
 
     # [print(round) for round in rounds]
@@ -208,6 +220,7 @@ def scrape(url, team_name, my_name):
                 faced[team] = [round_num]
 
     # print(faced)
+    print("Getting tournament scores, position scores, round scores, and average points...")
     tourney_scores, position_scores, round_scores, avg_points = get_tourney_scores_points_stats(faced, my_positions, len(rounds))
     # print(tourney_scores)
     # print(position_scores)
@@ -215,6 +228,7 @@ def scrape(url, team_name, my_name):
     # print(avg_points)
 
     # Get participant speaker scores
+    print("Getting your speaker scores...")
     click_on_nav("Speaker Tab")
     my_scores = get_my_speaker_scores(my_name, len(rounds))
     # print(my_scores)

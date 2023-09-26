@@ -1,12 +1,17 @@
 from scraping import scrape
-from flask import Flask
+from write_to_csv import write_to_csv
 
-app = Flask(__name__)
 
-@app.route('/', methods=['GET'])
-def run():
-    url = "https://yyzopen.calicotab.com/to23/" # input("Enter the URL: ")
-    team_name = "EEC 15" # input("Enter the team name: ")
-    my_name = "Terrence Zhu" # input("Enter the participant name: ")
+if __name__ == "__main__":
+    url = input("Enter the URL: ") # "https://yyzopen.calicotab.com/to23/" 
+    team_name = input("Enter the team name: ") # "EEC 15"
+    my_name = input("Enter the participant name: ") # "Terrence Zhu" 
     data = scrape(url, team_name, my_name)
-    return data
+
+    write_to_csv(data)
+
+    # output to console
+    with open("out.csv", "r") as file:
+        csv = file.readlines()
+    for line in csv:
+        print(line, end="")
