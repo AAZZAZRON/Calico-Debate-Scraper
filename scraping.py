@@ -78,11 +78,18 @@ Gets a team's position in a debate
 '''
 def get_teams_position(team_name, col):
     popup = col.find_element(By.XPATH, './/div[@role="tooltip" and @class="popover bs-popover-bottom"]')
-    teams = popup.find_elements(By.XPATH, './/div[@class="list-group-item"]')[0].get_attribute("innerText").split("Teams in debate:")[1].split(")")[:-1]
+    teams = popup.find_elements(By.XPATH, './/div[@class="list-group-item"]')[0].get_attribute("innerText").split("Teams in debate:")[1]
+    teams = teams.split(")")[:-1]
+    name = ""
     for team in teams:
-        name, pos = team.split(" (")
+        if " (" not in team:
+            name += team + ")"
+            continue
+        name2, pos = team.split(" (")
+        name += name2
         if name == team_name:
             return pos
+        name = ""
 
 
 '''
